@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>World Models on MI355X</title>
+<meta name="description" content="Measured speed and latency for open real-time video models on AMD Instinct MI355X, and every fix it took to run them.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Martian+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+  :root {
+    --ground: #f1f3f2;
+    --surface: #fafbfa;
+    --ink: #15191b;
+    --ink-2: #525d62;
+    --rule: #d2d9d8;
+    --accent: #0a756d;
+    --accent-soft: #d5ebe7;
+    --graphite: #9aa5a8;
+    --chip-pr: #0a756d;
+    --chip-fixed: #3d6b2f;
+    --chip-carried: #8a5a14;
+    --chip-env: #525d62;
+    --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --body: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --mono: "Martian Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0d1112;
+      --surface: #141a1b;
+      --ink: #e4eae8;
+      --ink-2: #97a3a3;
+      --rule: #263032;
+      --accent: #3fc2b3;
+      --accent-soft: #123532;
+      --graphite: #5e6a6c;
+      --chip-pr: #3fc2b3;
+      --chip-fixed: #8fc97a;
+      --chip-carried: #e0ad5c;
+      --chip-env: #97a3a3;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0d1112;
+    --surface: #141a1b;
+    --ink: #e4eae8;
+    --ink-2: #97a3a3;
+    --rule: #263032;
+    --accent: #3fc2b3;
+    --accent-soft: #123532;
+    --graphite: #5e6a6c;
+    --chip-pr: #3fc2b3;
+    --chip-fixed: #8fc97a;
+    --chip-carried: #e0ad5c;
+    --chip-env: #97a3a3;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 17px;
+    line-height: 1.6;
+    padding-inline: 20px;
+    padding-block: 48px 72px;
+  }
+  .page { max-width: 920px; margin: 0 auto; display: grid; gap: 56px; }
+  .prose { max-width: 66ch; }
+  header { display: grid; gap: 18px; border-bottom: 1px solid var(--rule); padding-bottom: 36px; }
+  .dateline {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em; color: var(--ink-2);
+    display: flex; flex-wrap: wrap; gap: 6px 18px;
+  }
+  h1 {
+    font-family: var(--display); font-stretch: 82%; font-weight: 760;
+    font-size: clamp(40px, 7vw, 68px); line-height: 0.98; letter-spacing: -0.01em;
+    margin: 0; text-wrap: balance;
+  }
+  h1 span { color: var(--accent); }
+  .dek { font-size: 20px; line-height: 1.5; margin: 0; max-width: 60ch; color: var(--ink); }
+  h2 {
+    font-family: var(--display); font-stretch: 88%; font-weight: 700; font-size: 27px; line-height: 1.15;
+    margin: 0; text-wrap: balance;
+  }
+  h3 { font-family: var(--display); font-stretch: 90%; font-weight: 650; font-size: 19px; margin: 0; }
+  section { display: grid; gap: 18px; }
+  p { margin: 0; }
+  .label {
+    font-family: var(--mono); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-2);
+  }
+  code, .num { font-family: var(--mono); font-size: 0.8em; }
+  a { color: var(--accent); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+  .findings { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; max-width: 70ch; }
+  .findings li { display: grid; grid-template-columns: 9.5rem 1fr; gap: 16px; padding-top: 14px; border-top: 1px solid var(--rule); }
+  .findings .model { font-family: var(--display); font-stretch: 85%; font-weight: 650; font-size: 16px; line-height: 1.35; }
+  figure { margin: 0; display: grid; gap: 12px; }
+  figcaption { font-size: 15px; color: var(--ink-2); max-width: 70ch; }
+  .chart { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 18px 18px 10px; overflow-x: auto; }
+  .chart svg { display: block; width: 100%; min-width: 620px; height: auto; }
+  .chart text { font-family: var(--mono); fill: var(--ink-2); }
+  .chart .row-label { fill: var(--ink); font-size: 12px; }
+  .chart .group { font-family: var(--display); font-size: 13px; font-weight: 700; fill: var(--ink); }
+  .chart .value { font-size: 11.5px; fill: var(--ink); }
+  .table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; font-family: var(--mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); font-weight: 500; white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  td.r, th.r { text-align: right; }
+  td strong { color: var(--accent); font-weight: 500; }
+  .fixes td:first-child { font-family: var(--display); font-stretch: 88%; font-size: 14px; font-weight: 650; white-space: nowrap; }
+  .fixes td:nth-child(2) { font-family: var(--body); font-size: 15px; line-height: 1.45; min-width: 22ch; }
+  .chip {
+    display: inline-block; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase;
+    border: 1px solid currentColor; border-radius: 999px; padding: 2px 8px; white-space: nowrap; margin-bottom: 4px;
+  }
+  .chip.pr { color: var(--chip-pr); }
+  .chip.fixed { color: var(--chip-fixed); }
+  .chip.carried { color: var(--chip-carried); }
+  .chip.env { color: var(--chip-env); }
+  .status a { display: block; font-size: 12px; }
+  .method { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px 28px; }
+  .method div { display: grid; gap: 6px; align-content: start; }
+  .method p { font-size: 15px; line-height: 1.5; }
+  footer { border-top: 1px solid var(--rule); padding-top: 18px; font-family: var(--mono); font-size: 11.5px; color: var(--ink-2); }
+  @media (max-width: 560px) {
+    body { font-size: 16px; padding-block: 32px 56px; }
+    .findings li { grid-template-columns: 1fr; gap: 4px; }
+    .dek { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="dateline"><span>Field report</span><span>2026-09-15</span><span>AMD Instinct MI355X · gfx950 · ROCm 7.14.1 · PyTorch 2.12</span></div>
+    <h1>World models on <span>MI355X</span></h1>
+    <p class="dek">We brought up the open real-time video models we work with on AMD Instinct MI355X cards on Daytona between 12 and 14 September. This is what ran, how fast it ran against the NVIDIA setups we used before, and every fix it took, with the pull requests that send those fixes back upstream.</p>
+  </header>
+
+  <section>
+    <p class="label">Three results</p>
+    <ul class="findings">
+      <li><span class="model">MiniMax H3 · FastH3 4-step</span><span>Four MI355X render a 14.375-second video-and-audio window at 960×544 in <span class="num">9.30 s</span>. Our four-H100 profile needed 12.98 to 14.4 s for the same window. Eight MI355X hold real time at the full 1344×768 frame: <span class="num">11.81 s</span> per window.</span></li>
+      <li><span class="model">LingBot-World v2 · 14B</span><span>One MI355X runs the 704×384 production frame at <span class="num">16.3 fps</span>, which clears the model's 16 fps clock. On H100 that frame was served from two cards with context parallelism.</span></li>
+      <li><span class="model">JoyAI-Video-Edit</span><span>One MI355X edits a 1248×720 camera stream at 24 fps with <span class="num">443 ms</span> from camera frame to edited pixels at the median. An RTX PRO 6000 reached 15.8 fps and 1733 ms at the same size.</span></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>MiniMax H3: seconds of content per second of compute</h2>
+    <p class="prose">Each bar is one 345-frame window, 14.375 seconds of video with audio, generated end to end: text encoding, four DiT forwards, video and audio decode and the file write. The ratio is content seconds divided by wall-clock seconds, so anything right of the 1.0 line keeps up with playback.</p>
+    <figure>
+      <div class="chart" role="img" aria-label="Bar chart of MiniMax H3 real-time ratio by system and resolution">
+        <svg viewBox="0 0 880 400" xmlns="http://www.w3.org/2000/svg">
+          <g id="fasth3-chart"></g>
+        </svg>
+      </div>
+      <figcaption>MI355X bars in color, NVIDIA reference points in grey. H100 is our own production profile, the midpoint of 12.98–14.4 s. B200 figures are FastVideo's published sm_100a sparse runs. MI355X rows use FastVideo's Triton sparse kernels (VSA 0.9, 64-token tiles) or dense SDPA with regional compile, whichever was faster at that size.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>LingBot-World v2: native frames per second by card count</h2>
+    <p class="prose">Measured with the camera held forward over 30 chunks. The MI355X rows use an incremental Ulysses KV exchange that swaps only the new frames' keys and values instead of the whole cache window on every attention call. It is bit-exact against the stock path over 757 attention calls, and it is what lets two cards beat one on MI355X links.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Model · frame</th><th>System</th><th class="r">1 card</th><th class="r">2 cards</th><th class="r">4 cards</th><th class="r">8 cards</th></tr></thead>
+        <tbody>
+          <tr><td>14B · 704×384</td><td>MI355X</td><td class="r"><strong>16.3</strong></td><td class="r">17.3</td><td class="r">35.1</td><td class="r">40.4</td></tr>
+          <tr><td>14B · 832×480</td><td>MI355X</td><td class="r"><strong>10.6</strong></td><td class="r">12.9</td><td class="r">25.5</td><td class="r">35.6</td></tr>
+          <tr><td>14B · 832×480</td><td>H100, stock</td><td class="r">5.2</td><td class="r">8.59</td><td class="r">16.15</td><td class="r">26.8</td></tr>
+          <tr><td>1.3B · 832×480</td><td>MI355X</td><td class="r"><strong>53.3</strong></td><td class="r">—</td><td class="r">—</td><td class="r">—</td></tr>
+          <tr><td>1.3B · 832×480</td><td>H100</td><td class="r">29.3</td><td class="r">—</td><td class="r">—</td><td class="r">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>JoyAI-Video-Edit: camera frame to edited pixels</h2>
+    <p class="prose">A synthetic H.264 camera streams into the worker for 60 seconds with one instruction change at 30 seconds. Latency runs from a camera frame arriving at the worker to the edited frame existing, before network and browser playback. The ROCm build of JoyAI's FP8 and fused kernels comes from Aaryaman Vasishta's fork, <a href="https://github.com/jammm/JoyAI-Video-Edit">jammm/JoyAI-Video-Edit</a>.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Canvas · clock</th><th>Card</th><th class="r">Delivered fps</th><th class="r">Frame → pixels p50 / p90</th><th class="r">First frame</th></tr></thead>
+        <tbody>
+          <tr><td>1248×720 · 24</td><td>MI355X</td><td class="r"><strong>24.0</strong></td><td class="r"><strong>443 / 578 ms</strong></td><td class="r">871 ms</td></tr>
+          <tr><td>1248×720 · 24</td><td>RTX PRO 6000</td><td class="r">15.8</td><td class="r">1733 / 1890 ms</td><td class="r">2440 ms</td></tr>
+          <tr><td>1248×720 · 30</td><td>MI355X</td><td class="r">28.1</td><td class="r">428 / 532 ms</td><td class="r">861 ms</td></tr>
+          <tr><td>840×480 · 24</td><td>MI355X</td><td class="r">24.0</td><td class="r">304 / 435 ms</td><td class="r">586 ms</td></tr>
+          <tr><td>840×480 · 24</td><td>RTX PRO 6000</td><td class="r">24.0</td><td class="r">441 / 576 ms</td><td class="r">1107 ms</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="prose">ABot-World and Helios also moved to single MI355X cards on 14 September after passing the same release gates. Helios needed no code change beyond turning off a CUDA-only FlashAttention 3 hub kernel. ABot-World needed a scaled-dot-product fallback for its flash-attention calls, listed below.</p>
+  </section>
+
+  <section>
+    <h2>What it took</h2>
+    <p class="prose">Everything we changed or worked around to run these models on ROCm, and where each fix now lives.</p>
+    <div class="table-wrap">
+      <table class="fixes">
+        <thead><tr><th>Where</th><th>What happened on ROCm</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>FastVideo platform detection</td><td>The <code>rocm/pytorch</code> images ship no <code>amdsmi</code> Python package, so FastVideo resolved the CPU platform on an AMD GPU. Installing the PyPI <code>amdsmi</code> wheel instead breaks <code>import torch</code>.</td><td class="status"><span class="chip pr">Pull request</span> <a href="https://github.com/hao-ai-lab/FastVideo/pull/1849">FastVideo #1849</a></td></tr>
+          <tr><td>FastVideo sparse attention</td><td>Backend selection on ROCm crashed with a <code>TypeError</code> for both video sparse attention backends. With that fixed, FastVideo's Triton sparse kernels run on gfx950, match PyTorch references, and one MI355X renders a 1344×768 window in 62.9&nbsp;s against 87.8&nbsp;s dense.</td><td class="status"><span class="chip pr">Pull request</span> <a href="https://github.com/hao-ai-lab/FastVideo/pull/1851">FastVideo #1851</a></td></tr>
+          <tr><td>fastvideo-kernel install</td><td>The Python and Triton parts of <code>fastvideo_kernel</code> import and run straight from the source tree, which is all the sparse path needs. Building its compiled extension with <code>build.sh --rocm</code> fails in the <code>rocm/pytorch</code> 7.14.1 image: CMake cannot enable the HIP language, because the pip-packaged ROCm SDK carries no <code>hip-lang</code> CMake package.</td><td class="status"><span class="chip env">Reported</span> <a href="https://github.com/hao-ai-lab/FastVideo/issues/1850">FastVideo #1850</a></td></tr>
+          <tr><td>ABot-World attention</td><td><code>flash_attention()</code> asserts a flash-attn build and has no fallback, so the model crashes on machines without one.</td><td class="status"><span class="chip pr">Pull request</span> <a href="https://github.com/amap-cvlab/ABot-World/pull/14">ABot-World #14</a></td></tr>
+          <tr><td>PyTorch caching allocator</td><td>With <code>expandable_segments:True</code>, the ROCm 7.14.1 image stops allocating after 242 tensors of 84&nbsp;MiB, or 2036 tensors of 1&nbsp;MiB, with more than 260&nbsp;GiB still free. The ROCm 10.1 nightly passes the same test, but we keep the setting off on both stacks.</td><td class="status"><span class="chip env">Setting</span></td></tr>
+          <tr><td>RCCL</td><td>Multi-card runs need <code>HSA_NO_SCRATCH_RECLAIM=1</code>. With it, Ulysses sequence parallelism over two to eight cards ran without a hang.</td><td class="status"><span class="chip env">Setting</span></td></tr>
+          <tr><td>FlashDreams runtime</td><td>LingBot's engine loads <code>libcudart</code> through ctypes at start-up, and PyTorch's cuDNN attention has no ROCm kernels, so we route it to the flash backend.</td><td class="status"><span class="chip carried">Carried patch</span></td></tr>
+          <tr><td>FlashDreams context parallel</td><td>Ulysses attention re-sends the whole KV window on every call, which made two MI355X slower than one. The incremental exchange above fixes it.</td><td class="status"><span class="chip carried">Carried patch</span></td></tr>
+          <tr><td>torchao FP8</td><td>torchao 0.17 limited FP8 to NVIDIA compute capability 8.9 and the MI300 family, which kept LingBot's FP8 path off gfx950.</td><td class="status"><span class="chip fixed">Fixed upstream</span></td></tr>
+          <tr><td>TheRock nightly torchvision</td><td>The nightly torchvision wheels carry no gfx950 GPU kernels, so operators such as <code>nms</code> fail on the GPU.</td><td class="status"><span class="chip env">Avoided</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>How we measured</h2>
+    <div class="method">
+      <div><p class="label">Hardware</p><p>Daytona MI355X VF spot sandboxes, 308.9 GB of device memory per card, eight cards on one XGMI hop. NVIDIA reference points ran on H100 SXM, RTX PRO 6000 and B200.</p></div>
+      <div><p class="label">Software</p><p>ROCm 7.14.1 and PyTorch 2.12.0 from the <code>rocm/pytorch</code> image. JoyAI used the TheRock nightly, ROCm 10.1 with PyTorch 2.13.</p></div>
+      <div><p class="label">MiniMax H3</p><p>FastVideo main from 13 September with the ROCm changes listed above applied as runtime patches, one excluded warmup window, then the median of the measured windows at seed 1000. On 15 September the single-card runs were repeated on FastVideo <code>37d06a8</code> with the two pull requests applied.</p></div>
+      <div><p class="label">LingBot and JoyAI</p><p>Our streaming worker on the box over loopback: native fps over 30 chunks for LingBot, a 60-second camera stream for JoyAI.</p></div>
+    </div>
+  </section>
+
+  <footer>Every figure on this page was measured by us on the systems named, except the B200 rows, which are FastVideo's published numbers.</footer>
+</div>
+
+<script>
+  (function () {
+    var rows = [
+      { group: "960×544" },
+      { label: "4× H100 · sparse, ThunderKittens", v: 1.049, s: "13.70 s", amd: false },
+      { label: "4× MI355X · dense + compile", v: 1.545, s: "9.30 s", amd: true },
+      { label: "8× MI355X · dense + compile", v: 2.525, s: "5.69 s", amd: true },
+      { group: "1344×768" },
+      { label: "1× B200 · sparse, sm_100a", v: 0.305, s: "47.20 s", amd: false },
+      { label: "1× MI355X · sparse, Triton", v: 0.228, s: "63.13 s", amd: true },
+      { label: "8× B200 · sparse, sm_100a", v: 1.116, s: "12.88 s", amd: false },
+      { label: "4× MI355X · sparse + compiled VAE", v: 0.704, s: "20.41 s", amd: true },
+      { label: "8× MI355X · sparse + compiled VAE", v: 1.217, s: "11.81 s", amd: true }
+    ];
+    var NS = "http://www.w3.org/2000/svg";
+    var g = document.getElementById("fasth3-chart");
+    var left = 285, right = 705, top = 30, rowH = 34, groupH = 30, max = 2.6;
+    function x(v) { return left + (v / max) * (right - left); }
+    function el(name, attrs, text) {
+      var n = document.createElementNS(NS, name);
+      for (var k in attrs) n.setAttribute(k, attrs[k]);
+      if (text != null) n.textContent = text;
+      g.appendChild(n);
+      return n;
+    }
+    var y = top, bars = [];
+    rows.forEach(function (r) {
+      if (r.group) { bars.push({ group: r.group, y: y }); y += groupH; return; }
+      bars.push({ row: r, y: y }); y += rowH;
+    });
+    var bottom = y + 6;
+    [0, 0.5, 1, 1.5, 2, 2.5].forEach(function (t) {
+      el("line", { x1: x(t), x2: x(t), y1: top - 8, y2: bottom, stroke: "var(--rule)", "stroke-width": 1 });
+      el("text", { x: x(t), y: bottom + 18, "text-anchor": "middle", "font-size": 11 }, t.toFixed(1) + "×");
+    });
+    bars.forEach(function (b) {
+      if (b.group) { el("text", { x: 0, y: b.y + 18, class: "group" }, b.group); return; }
+      var r = b.row, cy = b.y + rowH / 2;
+      el("text", { x: 0, y: cy + 4, class: "row-label" }, r.label);
+      el("rect", { x: left, y: cy - 9, width: Math.max(1, x(r.v) - left), height: 18, rx: 2,
+                   fill: r.amd ? "var(--accent)" : "var(--graphite)" });
+      el("text", { x: x(r.v) + 8, y: cy + 4, class: "value" }, r.v.toFixed(2) + "× · " + r.s);
+    });
+    el("line", { x1: x(1), x2: x(1), y1: top - 14, y2: bottom, stroke: "var(--ink)", "stroke-width": 1.5, "stroke-dasharray": "4 3" });
+    el("text", { x: x(1) + 6, y: top - 16, "font-size": 11, fill: "var(--ink)" }, "real time");
+    g.parentNode.setAttribute("viewBox", "0 0 880 " + (bottom + 32));
+  })();
+</script>
+</body>
+</html>
