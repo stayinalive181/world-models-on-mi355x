@@ -139,16 +139,17 @@
 <body>
 <div class="page">
   <header>
-    <div class="dateline"><span>Field report</span><span>2026-09-15</span><span>AMD Instinct MI355X · gfx950 · ROCm 7.14.1 · PyTorch 2.12</span></div>
+    <div class="dateline"><span>Field report</span><span>2026-09-15, updated 2026-09-20</span><span>AMD Instinct MI355X · gfx950 · ROCm 7.14.1 · PyTorch 2.12</span></div>
     <h1>World models on <span>MI355X</span></h1>
     <p class="dek">We brought up the open real-time video models we work with on AMD Instinct MI355X cards on Daytona between 12 and 14 September. This is what ran, how fast it ran against the NVIDIA setups we used before, and every fix it took, with the pull requests that send those fixes back upstream.</p>
   </header>
 
   <section>
-    <p class="label">Three results</p>
+    <p class="label">Four results</p>
     <ul class="findings">
       <li><span class="model">MiniMax H3 · FastH3 4-step</span><span>Four MI355X render a 14.375-second video-and-audio window at 960×544 in <span class="num">9.30 s</span>. Our four-H100 profile needed 12.98 to 14.4 s for the same window. Eight MI355X hold real time at the full 1344×768 frame: <span class="num">11.81 s</span> per window.</span></li>
       <li><span class="model">LingBot-World v2 · 14B</span><span>One MI355X runs the 704×384 production frame at <span class="num">16.3 fps</span>, which clears the model's 16 fps clock. On H100 that frame was served from two cards with context parallelism.</span></li>
+      <li><span class="model">SANA-WM · streaming</span><span>One MI355X runs the 2.6B world model's streaming pipeline at 1280×704 at <span class="num">23.6 fps</span> steady state, 1.47× its 16 fps clock, with or without <code>torch.compile</code>. The published H100 figure is 0.93× with compile.</span></li>
       <li><span class="model">JoyAI-Video-Edit</span><span>One MI355X edits a 1248×720 camera stream at 24 fps with <span class="num">443 ms</span> from camera frame to edited pixels at the median. An RTX PRO 6000 reached 15.8 fps and 1733 ms at the same size.</span></li>
     </ul>
   </section>
@@ -211,6 +212,8 @@
           <tr><td>FastVideo platform detection</td><td>The <code>rocm/pytorch</code> images ship no <code>amdsmi</code> Python package, so FastVideo resolved the CPU platform on an AMD GPU. Installing the PyPI <code>amdsmi</code> wheel instead breaks <code>import torch</code>.</td><td class="status"><span class="chip pr">Pull request</span> <a href="https://github.com/hao-ai-lab/FastVideo/pull/1849">FastVideo #1849</a></td></tr>
           <tr><td>FastVideo sparse attention</td><td>Backend selection on ROCm crashed with a <code>TypeError</code> for both video sparse attention backends. With that fixed, FastVideo's Triton sparse kernels run on gfx950, match PyTorch references, and one MI355X renders a 1344×768 window in 62.9&nbsp;s against 87.8&nbsp;s dense.</td><td class="status"><span class="chip pr">Pull request</span> <a href="https://github.com/hao-ai-lab/FastVideo/pull/1851">FastVideo #1851</a></td></tr>
           <tr><td>fastvideo-kernel install</td><td>The Python and Triton parts of <code>fastvideo_kernel</code> import and run straight from the source tree, which is all the sparse path needs. Building its compiled extension with <code>build.sh --rocm</code> fails in the <code>rocm/pytorch</code> 7.14.1 image: CMake cannot enable the HIP language, because the pip-packaged ROCm SDK carries no <code>hip-lang</code> CMake package. The pull request makes the build fall back to the Python and Triton package there.</td><td class="status"><span class="chip pr">Pull request</span> <a href="https://github.com/hao-ai-lab/FastVideo/pull/1871">FastVideo #1871</a> <a href="https://github.com/hao-ai-lab/FastVideo/issues/1850">issue #1850</a></td></tr>
+          <tr><td>SANA GDN kernels</td><td>The fused Gated DeltaNet Triton kernels pass <code>input_precision="tf32"</code> to <code>tl.dot</code>, which Triton on ROCm rejects, so every SANA-WM and SANA-Streaming forward failed at the first kernel compile. One module constant resolves it per backend.</td><td class="status"><span class="chip pr">Pull request</span> <a href="https://github.com/NVlabs/Sana/pull/508">Sana #508</a></td></tr>
+          <tr><td>LightX2V recipe</td><td>LightX2V had no MiniMax-H3 configuration for ROCm. A single-GPU aiter-attention recipe with the 4-step Turbo LoRA renders a 15-second 1344×768 clip in 111.5 s on one MI355X.</td><td class="status"><span class="chip pr">Pull request</span> <a href="https://github.com/ModelTC/LightX2V/pull/1534">LightX2V #1534</a></td></tr>
           <tr><td>ABot-World attention</td><td><code>flash_attention()</code> asserts a flash-attn build and has no fallback, so the model crashes on machines without one.</td><td class="status"><span class="chip pr">Pull request</span> <a href="https://github.com/amap-cvlab/ABot-World/pull/14">ABot-World #14</a></td></tr>
           <tr><td>PyTorch caching allocator</td><td>With <code>expandable_segments:True</code>, the ROCm 7.14.1 image stops allocating after 242 tensors of 84&nbsp;MiB, or 2036 tensors of 1&nbsp;MiB, with more than 260&nbsp;GiB still free. The ROCm 10.1 nightly passes the same test, but we keep the setting off on both stacks.</td><td class="status"><span class="chip env">Setting</span></td></tr>
           <tr><td>RCCL</td><td>Multi-card runs need <code>HSA_NO_SCRATCH_RECLAIM=1</code>. With it, Ulysses sequence parallelism over two to eight cards ran without a hang.</td><td class="status"><span class="chip env">Setting</span></td></tr>
