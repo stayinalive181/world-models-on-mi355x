@@ -6,6 +6,21 @@
 <meta name="color-scheme" content="light dark">
 <title>World Models on MI355X</title>
 <meta name="description" content="Measured speed and latency for open real-time video models on AMD Instinct MI355X, and every fix it took to run them.">
+<meta name="author" content="Windflow">
+<link rel="canonical" href="https://stayinalive181.github.io/world-models-on-mi355x/">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "World models on MI355X",
+  "description": "Measured speed and latency for open real-time video models on AMD Instinct MI355X, and every fix it took to run them.",
+  "datePublished": "2026-09-15",
+  "dateModified": "2026-09-22",
+  "url": "https://stayinalive181.github.io/world-models-on-mi355x/",
+  "author": { "@type": "Organization", "name": "Windflow", "url": "https://windflow.online/" },
+  "publisher": { "@type": "Organization", "name": "Windflow", "url": "https://windflow.online/" }
+}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Martian+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
@@ -83,6 +98,8 @@
   }
   h1 span { color: var(--accent); }
   .dek { font-size: 20px; line-height: 1.5; margin: 0; max-width: 60ch; color: var(--ink); }
+  .byline { font-family: var(--mono); font-size: 12px; letter-spacing: 0.02em; margin: 0; color: var(--ink-2); }
+  .byline a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
   h2 {
     font-family: var(--display); font-stretch: 88%; font-weight: 700; font-size: 27px; line-height: 1.15;
     margin: 0; text-wrap: balance;
@@ -142,6 +159,7 @@
     <div class="dateline"><span>Field report</span><span>2026-09-15, updated 2026-09-22</span><span>AMD Instinct MI355X · gfx950 · ROCm 7.14.1 · PyTorch 2.12</span></div>
     <h1>World models on <span>MI355X</span></h1>
     <p class="dek">We brought up the open real-time video models we work with on AMD Instinct MI355X cards on Daytona between 12 and 14 September. This is what ran, how fast it ran against the NVIDIA setups we used before, and every fix it took, with the pull requests that send those fixes back upstream.</p>
+    <p class="byline">By <a href="https://windflow.online">Windflow</a> — realtime interactive AI video models, served on demand.</p>
   </header>
 
   <section>
@@ -236,7 +254,7 @@
     </div>
   </section>
 
-  <footer>Every figure on this page was measured by us on the systems named, except the B200 rows, which are FastVideo's published numbers.</footer>
+  <footer>Every figure on this page was measured by us on the systems named, except the B200 rows, which are FastVideo's published numbers. Published by <a href="https://windflow.online">Windflow</a>.</footer>
 </div>
 
 <script>
